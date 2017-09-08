@@ -258,7 +258,7 @@ int test2(const char* inputPath,const char* outputPath){
     int quality = kDefaultJPEGQuality;
     int memlimit_mb = kDefaultMemlimitMB;
     
-    g_mathMode = MODE_METAL;
+    g_mathMode = MODE_CHECKMETAL;
     
     std::string in_data = ReadFileOrDie(inputPath);
     std::string out_data;
@@ -332,7 +332,7 @@ int test(const char* inputPath,const char* outputPath){
     int quality = kDefaultJPEGQuality;
     int memlimit_mb = kDefaultMemlimitMB;
     
-    g_mathMode = MODE_METAL;
+    g_mathMode = MODE_CHECKMETAL;
     
     std::string in_data = ReadFileOrDie(inputPath);
     std::string out_data;

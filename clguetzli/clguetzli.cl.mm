@@ -369,6 +369,7 @@ namespace guetzli
 #ifdef __USE_METAL__
         else if (MODE_METAL == g_mathMode)
         {
+            NSLog(@"g_mathMode:%d",g_mathMode);
             std::vector<std::vector<float> > rgb1(3, std::vector<float>(width_ * height_));
             img.ToLinearRGB(&rgb1);
             
@@ -383,10 +384,11 @@ namespace guetzli
             
             cl_mem mem_result = allocMem(channel_size,NULL);
             ocl_channels *xyb0 = allocMemChannels(channel_size, rgb_orig_opsin[0].data(), rgb_orig_opsin[1].data(), rgb_orig_opsin[2].data());
+            //NSData* data1 = [NSData dataWithBytesNoCopy:[xyb0->r contents ] length: [xyb0->r length] freeWhenDone:false ];
             ocl_channels *xyb1 = allocMemChannels(channel_size, rgb1[0].data(), rgb1[1].data(), rgb1[2].data());
             clOpsinDynamicsImageEx(xyb1, xsize, ysize);
             clDiffmapOpsinDynamicsImageEx(mem_result, xyb0, xyb1, xsize, ysize, comparator_.step());
-
+            
             clEnqueueReadBuffer(m_ometal.commandQueue, mem_result, false, 0, channel_size, distmap_.data(), 0, NULL, NULL);
             
             

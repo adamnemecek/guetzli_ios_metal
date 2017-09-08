@@ -17,7 +17,7 @@
 #define BLOCK_SIZE_Y 16
 #define BLOCK_COUNT_X(size)    ((size + BLOCK_SIZE_X - 1) / BLOCK_SIZE_X)
 #define BLOCK_COUNT_Y(size)    ((size + BLOCK_SIZE_Y - 1) / BLOCK_SIZE_Y)
-
+ometal *global_metal;
 
 void clEnqueueReadBuffer(id     /* command_queue */,
                          cl_mem m_cl_mem             /* buffer */,
@@ -32,12 +32,12 @@ void clEnqueueReadBuffer(id     /* command_queue */,
     
     NSData* data = [NSData dataWithBytesNoCopy:[m_cl_mem contents ] length: [m_cl_mem length] freeWhenDone:false ];
     void *values = (void *)[data bytes];
-    memcpy ( m_ptr, values, sizeof([m_cl_mem length]) );
+    memcpy ( m_ptr, values,[m_cl_mem length] );
 }
 
 void clEnqueueCopyBuffer(id    /* command_queue */,
                          cl_mem src             /* src_buffer */,
-                         cl_mem dst             /* dst_buffer */,
+                         cl_mem *dst             /* dst_buffer */,
                          size_t              /* src_offset */,
                          size_t              /* dst_offset */,
                          size_t              /* size */,
@@ -47,16 +47,18 @@ void clEnqueueCopyBuffer(id    /* command_queue */,
 {
     NSData* data = [NSData dataWithBytesNoCopy:[src contents ] length: [src length] freeWhenDone:false ];
     
-    dst = [[ometal sharedInstance].device newBufferWithBytes:[data bytes]
+    *dst = [[ometal sharedInstance].device newBufferWithBytes:[data bytes]
                                                       length:[src length]
                                                      options:MTLResourceOptionCPUCacheModeDefault];
+    
+    //NSData* data1 = [NSData dataWithBytesNoCopy:[dst contents ] length: [dst length] freeWhenDone:false ];
 }
 
 void clOpsinDynamicsImage(float *r, float *g, float *b, const size_t xsize, const size_t ysize)
 {
     size_t channel_size = xsize * ysize * sizeof(float);
     ometal *m_ometal = [ometal sharedInstance];
-    
+    global_metal = [ometal sharedInstance];
     ocl_channels  * rgb = allocMemChannels(channel_size, r, g, b);
     
     clOpsinDynamicsImageEx(rgb, xsize, ysize);
@@ -263,7 +265,7 @@ void clDiffmapOpsinDynamicsImageEx(
     cl_mem block_diff_ac = allocMem(3 * channel_step_size,NULL);
     
     clMaskHighIntensityChangeEx(xyb0, xyb1, xsize, ysize);
-    
+    //NSData* data11 = [NSData dataWithBytesNoCopy:[xyb0->r contents ] length: [xyb0->r length] freeWhenDone:false ];
     clEdgeDetectorMapEx(edge_detector_map, xyb0, xyb1, xsize, ysize, step);
     clBlockDiffMapEx(block_diff_dc, block_diff_ac, xyb0, xyb1, xsize, ysize, step);
     clEdgeDetectorLowFreqEx(block_diff_ac, xyb0, xyb1, xsize, ysize, step);
@@ -275,11 +277,11 @@ void clDiffmapOpsinDynamicsImageEx(
                 
     }
     
-    NSData* data1 = [NSData dataWithBytesNoCopy:[edge_detector_map contents ] length: [edge_detector_map length] freeWhenDone:false ];
-    NSData* data2 = [NSData dataWithBytesNoCopy:[block_diff_ac contents ] length: [block_diff_ac length] freeWhenDone:false ];
+    //NSData* data1 = [NSData dataWithBytesNoCopy:[edge_detector_map contents ] length: [edge_detector_map length] freeWhenDone:false ];
+    //NSData* data2 = [NSData dataWithBytesNoCopy:[block_diff_ac contents ] length: [block_diff_ac length] freeWhenDone:false ];
     
     clCalculateDiffmapEx(result, xsize, ysize, step);
-    NSData* data = [NSData dataWithBytesNoCopy:[result contents ] length: [result length] freeWhenDone:false ];
+    //NSData* data = [NSData dataWithBytesNoCopy:[result contents ] length: [result length] freeWhenDone:false ];
 }
 
 //#define test
@@ -520,7 +522,7 @@ void clConvolutionEx(
     
     
     MTLSize threadsPerGroup = {1, 1, 1};
-    MTLSize numThreadgroups= {xsize+10, ysize+10, 1};
+    MTLSize numThreadgroups= {xsize, ysize, 1};
     [computeCE dispatchThreadgroups:numThreadgroups
               threadsPerThreadgroup:threadsPerGroup];
     [computeCE endEncoding];
@@ -638,7 +640,7 @@ void clConvolutionXEx(
     
     
     MTLSize threadsPerGroup = {1, 1, 1};
-    MTLSize numThreadgroups= {xsize+10, ysize+10, 1};
+    MTLSize numThreadgroups= {xsize, ysize, 1};
     [computeCE dispatchThreadgroups:numThreadgroups
               threadsPerThreadgroup:threadsPerGroup];
     [computeCE endEncoding];
@@ -873,32 +875,26 @@ void clMaskHighIntensityChangeEx(
     
     ocl_channels  * c0 = allocMemChannels(channel_size,NULL,NULL,NULL);
     ocl_channels  * c1 = allocMemChannels(channel_size,NULL,NULL,NULL);
+    cl_mem  c0r= c0->r;
+    cl_mem  c0g= c0->g;
+    cl_mem  c0b= c0->b;
+    cl_mem  c1r= c1->r;
+    cl_mem  c1g= c1->g;
+    cl_mem  c1b= c1->b;
+    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb0->r, &c0r, 0, 0, channel_size, 0, NULL, NULL);
+    //NSData* data = [NSData dataWithBytesNoCopy:[c0r contents ] length: [c0r length] freeWhenDone:false ];
     
-    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb0->r, c0->r, 0, 0, channel_size, 0, NULL, NULL);
-    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb0->g, c0->g, 0, 0, channel_size, 0, NULL, NULL);
-    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb0->b, c0->b, 0, 0, channel_size, 0, NULL, NULL);
-    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb1->r, c1->r, 0, 0, channel_size, 0, NULL, NULL);
-    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb1->g, c1->g, 0, 0, channel_size, 0, NULL, NULL);
-    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb1->b, c1->b, 0, 0, channel_size, 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb0->g, &c0g, 0, 0, channel_size, 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb0->b, &c0b, 0, 0, channel_size, 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb1->r, &c1r, 0, 0, channel_size, 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb1->g, &c1g, 0, 0, channel_size, 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, xyb1->b, &c1b, 0, 0, channel_size, 0, NULL, NULL);
+    
+
     
     
     id <MTLFunction> kernel =  m_ometal.kernel[KERNEL_MASKHIGHINTENSITYCHANGE];
-    //    clSetKernelArgEx(kernel,
-    //                     &xyb0->r, &xyb0->g, &xyb0->b,
-    //                     &xsize, &ysize,
-    //                     &xyb1->r, &xyb1->g, &xyb1->b,
-    //                     &c0.r, &c0.g, &c0.b,
-    //                     &c1.r, &c1.g, &c1.b);
-    //
-    //    size_t globalWorkSize[2] = { xsize, ysize };
-    //    int err = clEnqueueNDRangeKernel(m_ometal.commandQueue, kernel, 2, NULL, globalWorkSize, NULL, 0, NULL, NULL);
-    //    LOG_CL_RESULT(err);
-    //    err = clFinish(m_ometal.commandQueue);
-    //    LOG_CL_RESULT(err);
-    //
-    //    m_m_ometal.releaseMemChannels(c0);
-    //    m_ometal.releaseMemChannels(c1);
-    //
+
     
     
     id<MTLBuffer> xsizeBuffer =[m_ometal.device newBufferWithBytes:&xsize
@@ -928,12 +924,12 @@ void clMaskHighIntensityChangeEx(
     [computeCE setBuffer:xyb1->r offset:0 atIndex:5];
     [computeCE setBuffer:xyb1->g offset:0 atIndex:6];
     [computeCE setBuffer:xyb1->b offset:0 atIndex:7];
-    [computeCE setBuffer:c0->r offset:0 atIndex:8];
-    [computeCE setBuffer:c0->g offset:0 atIndex:9];
-    [computeCE setBuffer:c0->b offset:0 atIndex:10];
-    [computeCE setBuffer:c1->r offset:0 atIndex:11];
-    [computeCE setBuffer:c1->g offset:0 atIndex:12];
-    [computeCE setBuffer:c1->b offset:0 atIndex:13];
+    [computeCE setBuffer:c0r offset:0 atIndex:8];
+    [computeCE setBuffer:c0g offset:0 atIndex:9];
+    [computeCE setBuffer:c0b offset:0 atIndex:10];
+    [computeCE setBuffer:c1r offset:0 atIndex:11];
+    [computeCE setBuffer:c1g offset:0 atIndex:12];
+    [computeCE setBuffer:c1b offset:0 atIndex:13];
     
     MTLSize threadsPerGroup = {1,1, 1};
     MTLSize numThreadgroups= {xsize, ysize, 1};
@@ -956,6 +952,9 @@ void clEdgeDetectorMapEx(
     size_t channel_size = xsize * ysize * sizeof(float);
     
     ometal *m_ometal = [ometal sharedInstance];
+    
+    NSData* data0 = [NSData dataWithBytesNoCopy:[rgb->r contents ] length: [rgb->r length] freeWhenDone:false ];
+    
     
     ocl_channels  * rgb_blured = allocMemChannels(channel_size,NULL,NULL,NULL);
     ocl_channels  * rgb2_blured = allocMemChannels(channel_size,NULL,NULL,NULL);
@@ -1023,6 +1022,7 @@ void clEdgeDetectorMapEx(
     [commandBuffer waitUntilCompleted];
     NSData* data1 = [NSData dataWithBytesNoCopy:[result contents ] length: [result length] freeWhenDone:false ];
     //clEdgeDetectorMapEx((float *)[data1 bytes],&res_xsize,&res_ysize,rgb_blured->r,rgb_blured->g,rgb_blured->b,rgb2_blured->r,rgb2_blured->g,rgb2_blured->b,&xsize,&ysize,&step,0,0);
+    int test =0;
 }
 
 void clBlockDiffMapEx(
@@ -1271,7 +1271,7 @@ void clAverage5x5Ex(cl_mem img/*in,out*/, const size_t xsize, const size_t ysize
     size_t len = xsize * ysize * sizeof(float);
     cl_mem img_org = allocMem(len,NULL);
     
-    clEnqueueCopyBuffer(m_ometal.commandQueue, img, img_org, 0, 0, len, 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, img, &img_org, 0, 0, len, 0, NULL, NULL);
     
     id <MTLFunction> kernel =  m_ometal.kernel[KERNEL_AVERAGE5X5];
     //    clSetKernelArgEx(kernel, &img, &xsize, &ysize, &img_org);
@@ -1662,7 +1662,7 @@ void clUpsampleSquareRootEx(cl_mem diffmap, const size_t xsize, const size_t ysi
     
     
     
-    ometal *m_ometal = [ometal sharedInstance];
+    ometal *m_ometal = global_metal;
     
     cl_mem diffmap_out = allocMem(xsize * ysize * sizeof(float),NULL);
     
@@ -1723,7 +1723,7 @@ void clUpsampleSquareRootEx(cl_mem diffmap, const size_t xsize, const size_t ysi
     
     //NSData* data = [NSData dataWithBytesNoCopy:[diffmap_out contents ] length: [diffmap_out length] freeWhenDone:false ];
     //NSData* data1 = [NSData dataWithBytesNoCopy:[diffmap contents ] length: [diffmap length] freeWhenDone:false ];
-    clEnqueueCopyBuffer(m_ometal.commandQueue, diffmap_out, diffmap, 0, 0, xsize * ysize * sizeof(float), 0, NULL, NULL);
+    clEnqueueCopyBuffer(m_ometal.commandQueue, diffmap_out, &diffmap, 0, 0, xsize * ysize * sizeof(float), 0, NULL, NULL);
 }
 
 void clRemoveBorderEx(cl_mem out, const cl_mem in, const size_t xsize, const size_t ysize, const int step)

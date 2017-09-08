@@ -21,6 +21,8 @@ cl_mem allocMem(size_t s, const void *init )
         mem = [m_ometal.device newBufferWithBytes:init
                                                   length:s
                                                  options:MTLResourceOptionCPUCacheModeDefault];
+//        NSData* data = [NSData dataWithBytesNoCopy:[mem contents ] length: [mem length] freeWhenDone:false ];
+//        int test =1;
     }
 
     else

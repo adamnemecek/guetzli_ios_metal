@@ -23,8 +23,8 @@ enum MATH_MODE
     MODE_CUDA=3,
     MODE_CHECKCL=4,
     MODE_CHECKCUDA=5,
-    MODE_METAL=0,
-    MODE_CHECKMETAL=7
+    MODE_METAL=7,
+    MODE_CHECKMETAL=0,
 };
 
 static MATH_MODE g_mathMode;

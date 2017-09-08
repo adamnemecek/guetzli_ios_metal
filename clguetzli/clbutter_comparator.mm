@@ -1,6 +1,6 @@
-#include "clbutter_comparator.h"
-#include "clguetzli.h"
-#include "clguetzli_test.h"
+#import "clbutter_comparator.h"
+#import "clguetzli.h"
+#import "clguetzli_test.h"
 
 #include <algorithm>
 #include <array>
@@ -1341,6 +1341,15 @@ namespace butteraugli
                 (*block_diff_dc).data(), (*block_diff_ac).data());
         }
 #endif
+#ifdef __USE_METAL__
+        if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
+        {
+            tclBlockDiffMap(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+                            xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
+                            xsize_, ysize_, step_,
+                            (*block_diff_dc).data(), (*block_diff_ac).data());
+        }
+#endif
     }
 	
     void clButteraugliComparator::EdgeDetectorMap(const std::vector<std::vector<float> > &xyb0,
@@ -1355,6 +1364,15 @@ namespace butteraugli
                 xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
                 xsize_, ysize_, step_, 
                 (*edge_detector_map).data());
+        }
+#endif
+#ifdef __USE_METAL__
+        if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
+        {
+            tclEdgeDetectorMap(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+                               xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
+                               xsize_, ysize_, step_,
+                               (*edge_detector_map).data());
         }
 #endif
     }
@@ -1374,6 +1392,18 @@ namespace butteraugli
                 orign_ac.data(), (*block_diff_ac).data());
         }
         else
+#endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
+            {
+                std::vector<float> orign_ac = *block_diff_ac;
+                ButteraugliComparator::EdgeDetectorLowFreq(xyb0, xyb1, block_diff_ac);
+                tclEdgeDetectorLowFreq(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+                                       xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
+                                       xsize_, ysize_, step_,
+                                       orign_ac.data(), (*block_diff_ac).data());
+            }
+            else
 #endif
         {
             ButteraugliComparator::EdgeDetectorLowFreq(xyb0, xyb1, block_diff_ac);
@@ -1399,6 +1429,19 @@ namespace butteraugli
                 block_diff_ac.data(), edge_detector_map.data(), xsize_, ysize_, res_xsize_, res_ysize_, step_, &temp[0], &(*result)[0]);
         }
         else
+#endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
+            {
+                std::vector<float> temp = *result;
+                temp.resize(res_xsize_ * res_ysize_);
+                ButteraugliComparator::CombineChannels(mask_xyb, mask_xyb_dc, block_diff_dc, block_diff_ac, edge_detector_map, result);
+                tclCombineChannels(mask_xyb[0].data(), mask_xyb[1].data(), mask_xyb[2].data(),
+                                   mask_xyb_dc[0].data(), mask_xyb_dc[1].data(), mask_xyb_dc[2].data(),
+                                   block_diff_dc.data(),
+                                   block_diff_ac.data(), edge_detector_map.data(), xsize_, ysize_, res_xsize_, res_ysize_, step_, &temp[0], &(*result)[0]);
+            }
+            else
 #endif
         {
             ButteraugliComparator::CombineChannels(mask_xyb, mask_xyb_dc, block_diff_dc, block_diff_ac, edge_detector_map, result);
@@ -1598,6 +1641,17 @@ namespace butteraugli
         }
 		else
 #endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+            {
+                std::vector<float> img;
+                img.resize(xsize * ysize);
+                memcpy(img.data(), values, xsize * ysize * sizeof(float));
+                _MinSquareVal(square_size, offset, xsize, ysize, values);
+                tclMinSquareVal(img.data(), square_size, offset, xsize, ysize, values);
+            }
+            else
+#endif
         {
             _MinSquareVal(square_size, offset, xsize, ysize, values);
         }
@@ -1614,6 +1668,15 @@ namespace butteraugli
         }
         else
 #endif
+#ifdef __USE_OPENCL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+            {
+                std::vector<float> diffs_org = *diffs;
+                _Average5x5(xsize, ysize, diffs);
+                tclAverage5x5(xsize, ysize, diffs_org, *diffs);
+            }
+            else
+#endif
         {
             _Average5x5(xsize, ysize, diffs);
         }
@@ -1625,6 +1688,12 @@ namespace butteraugli
 
 #ifdef __USE_OPENCL__
         if (MODE_CHECKCL == g_mathMode && xsize > 8 && ysize > 8)
+        {
+            tclDiffPrecompute(xyb0, xyb1, xsize, ysize, mask);
+        }
+#endif
+#ifdef __USE_METAL__
+        if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
         {
             tclDiffPrecompute(xyb0, xyb1, xsize, ysize, mask);
         }
@@ -1707,6 +1776,15 @@ namespace butteraugli
         }
         else
 #endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+            {
+                std::vector<float> diffmap_org = *diffmap;
+                _CalculateDiffmap(xsize, ysize, step, diffmap);
+                tclCalculateDiffmap(xsize, ysize, step, diffmap_org.data(), diffmap_org.size(), (*diffmap).data());
+            }
+            else
+#endif
         {
             _CalculateDiffmap(xsize, ysize, step, diffmap);
         }
@@ -1731,6 +1809,18 @@ namespace butteraugli
         }
 		else
 #endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+            {
+                _MaskHighIntensityChange(xsize, ysize, c0, c1, xyb0, xyb1);
+                tclMaskHighIntensityChange(c0[0].data(), c0[1].data(), c0[2].data(),
+                                           c1[0].data(), c1[1].data(), c1[2].data(),
+                                           xsize, ysize,
+                                           xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+                                           xyb1[0].data(), xyb1[1].data(), xyb1[2].data());
+            }
+            else
+#endif
 		if (MODE_CPU_OPT == g_mathMode)
 		{
 			MaskHighIntensityChangeOpt(xsize, ysize, c0, c1, xyb0, xyb1);
@@ -1751,6 +1841,15 @@ namespace butteraugli
             tclScaleImage(scale, result_org.data(), (*result).data(), (*result).size());
         }
         else
+#endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && result->size() > 64)
+            {
+                std::vector<float> result_org = *result;
+                _ScaleImage(scale, result);
+                tclScaleImage(scale, result_org.data(), (*result).data(), (*result).size());
+            }
+            else
 #endif
         {
             _ScaleImage(scale, result);
@@ -1773,6 +1872,12 @@ namespace butteraugli
             tclConvolution(xsize, ysize, xstep, len, offset, multipliers, inp, border_ratio, result);
         }
 #endif
+#ifdef __USE_METAL__
+        if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+        {
+            tclConvolution(xsize, ysize, xstep, len, offset, multipliers, inp, border_ratio, result);
+        }
+#endif
     }
 
     void Blur(size_t xsize, size_t ysize, float* channel, double sigma,
@@ -1788,6 +1893,17 @@ namespace butteraugli
             tclBlur(orignChannel.data(), xsize, ysize, sigma, border_ratio, channel);
         }
         else
+#endif
+#ifdef __USE_METAL__
+            if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+            {
+                std::vector<float> orignChannel;
+                orignChannel.resize(xsize * ysize);
+                memcpy(orignChannel.data(), channel, xsize * ysize * sizeof(float));
+                _Blur(xsize, ysize, channel, sigma, border_ratio);
+                tclBlur(orignChannel.data(), xsize, ysize, sigma, border_ratio, channel);
+            }
+            else
 #endif
         {
             _Blur(xsize, ysize, channel, sigma, border_ratio);

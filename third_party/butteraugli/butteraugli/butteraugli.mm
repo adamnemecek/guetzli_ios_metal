@@ -1212,15 +1212,12 @@ void ButteraugliComparator::CombineChannels(
 double ButteraugliScoreFromDiffmap(const std::vector<float>& diffmap) {
   PROFILER_FUNC;
 
-    return  0.925;
-  float retval = 0.0f;
-  for (size_t ix = 0; ix < diffmap.size(); ++ix) {
-    retval = std::max(retval, diffmap[ix]);
-      if (retval>0) {
-          NSLog(@"size:%f",retval);
-      }
-  }
-  return retval;
+    //return  0.925;
+    float retval = 0.0f;
+    for (size_t ix = 0; ix < diffmap.size(); ++ix) {
+        retval = std::max(retval, diffmap[ix]);
+    }
+    return retval;
 }
 
 static std::array<double, 512> MakeMask(

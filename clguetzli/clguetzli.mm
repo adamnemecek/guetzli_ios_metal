@@ -7,7 +7,7 @@
 #include <vector>
 #include "cl.hpp"
 
-extern MATH_MODE g_mathMode = MODE_CPU_OPT;
+//extern MATH_MODE g_mathMode = MODE_CPU_OPT;
 
 
 
