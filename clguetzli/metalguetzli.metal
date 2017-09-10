@@ -3049,12 +3049,7 @@ kernel void clEdgeDetectorMapEx(
     result[idx] = diff_xyb[0];
     result[idx + 1] = diff_xyb[1];
     result[idx + 2] = diff_xyb[2];
-    
-    result[0] = pos_x;
-    result[1] = pos_y;
-    result[2] = xsize;
-    result[3] = ysize;
-    
+
 }
 
 

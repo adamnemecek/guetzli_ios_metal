@@ -94,29 +94,15 @@ void tclEdgeDetectorMap(const float* r, const float* g, const float* b,
     const size_t res_xsize = (xsize + step - 1) / step;
     const size_t res_ysize = (ysize + step - 1) / step;
     const size_t edgemap_size = res_xsize * res_ysize * 3 * sizeof(float);
-    
-    cl_int err = 0;
-    
     ocl_channels *xyb0 = allocMemChannels(channel_size, r, g, b);
     ocl_channels *xyb1 = allocMemChannels(channel_size, r2, g2, b2);
     cl_mem edge = allocMem(edgemap_size,NULL);
-    
     clEdgeDetectorMapEx(edge, xyb0, xyb1, xsize, ysize, step);
-    
     cl_float *r_r = new float[channel_size];
-    //    (cl_float *)clEnqueueMapBuffer(m_ometal.commandQueue, edge, true, CL_MAP_READ, 0, edgemap_size, 0, NULL, NULL, &err);
-    //    err = clFinish(m_ometal.commandQueue);
-    
     clEnqueueReadBuffer(m_ometal.commandQueue, edge, false, 0, channel_size, r_r, 0, NULL, NULL);
-    
     FLOAT_COMPARE(result, r_r, res_xsize * res_ysize * 3);
     
-    //clEnqueueUnmapMemObject(m_ometal.commandQueue, edge, r_r, 0, NULL, NULL);
-    //err = clFinish(m_ometal.commandQueue);
     
-    //    m_ometal.releaseMemChannels(xyb0);
-    //    m_ometal.releaseMemChannels(xyb1);
-    //    clReleaseMemObject(edge);
 }
 
 // strong todo
