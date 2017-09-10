@@ -24,11 +24,7 @@
 
 -(void)loadView{
     [super loadView];
-//    UIImageView* imageV = [UIImageView new];
-//    
-//    imageV.image = [UIImage imageWithContentsOfFile:[NSString stringWithFormat:@"%@/%@",[[NSBundle mainBundle] resourcePath],@"1.png"]];
-//    imageV.frame = CGRectMake(0, 100, imageV.image.size.width/2, imageV.image.size.height/2);
-//    [self.view addSubview:imageV];
+
     UIButton* button = [UIButton buttonWithType:UIButtonTypeCustom];
     
     [button setTitle:@"开始测试" forState:UIControlStateNormal];

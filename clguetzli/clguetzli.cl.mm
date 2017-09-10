@@ -369,7 +369,7 @@ namespace guetzli
 #ifdef __USE_METAL__
         else if (MODE_METAL == g_mathMode)
         {
-            NSLog(@"g_mathMode:%d",g_mathMode);
+            //NSLog(@"g_mathMode:%d",g_mathMode);
             std::vector<std::vector<float> > rgb1(3, std::vector<float>(width_ * height_));
             img.ToLinearRGB(&rgb1);
             

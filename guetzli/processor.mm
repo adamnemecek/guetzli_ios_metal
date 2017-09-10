@@ -641,7 +641,7 @@ void Processor::SelectFrequencyMasking(const JPEGData& jpg, OutputImage* img, co
 	if (MODE_CPU_OPT == g_mathMode || MODE_CPU == g_mathMode)
 #endif
     {
-        NSLog(@"g_mathMode:d%",g_mathMode);
+        //NSLog(@"g_mathMode:d%",g_mathMode);
         output_order_cpu.resize(num_blocks * kBlockSize);
         output_order = output_order_cpu.data();
         for (int block_y = 0, block_ix = 0; block_y < block_height; ++block_y) {

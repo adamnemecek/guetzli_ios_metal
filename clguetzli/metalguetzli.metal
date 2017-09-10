@@ -258,22 +258,7 @@ double DotProduct(DEVICE const float u[3], const double v[3]) {
     return u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
 }
 
-double Interpolate(constant const double *array, const int size, const double sx) {
-    double ix = fabs(sx);
-    
-    int baseix = (int)(ix);
-    double res;
-    if (baseix >= size - 1) {
-        res = array[size - 1];
-    }
-    else {
-        double mix = ix - baseix;
-        int nextix = baseix + 1;
-        res = array[baseix] + mix * (array[nextix] - array[baseix]);
-    }
-    if (sx < 0) res = -res;
-    return res;
-}
+
 
 #define XybToVals_off_x 11.38708334481672
 #define XybToVals_inc_x 14.550189611520716
@@ -338,10 +323,29 @@ void XybToVals(
     *valx = Interpolate(&XybToVals_lut_x[0], 21, x * xmul);
     *valy = Interpolate(&XybToVals_lut_y[0], 21, y * ymul);
     *valz = zmul * z;
-}
 
+//    *valx = x * xmul;
+//    *valy = y * ymul;
+//    *valz = zmul * z;
+}
+double Interpolate(constant const double *array, const int size, const double sx) {
+    double ix = fabs(sx);
+    int baseix = (int)(ix);
+    double res;
+    if (baseix >= size - 1) {
+        res = array[size - 1];
+    }
+    else {
+        double mix = ix - baseix;
+        int nextix = baseix + 1;
+        res = array[baseix] + mix * (array[nextix] - array[baseix]);
+    }
+    if (sx < 0) res = -res;
+    
+    return res;
+}
 #define XybLowFreqToVals_inc 5.2511644570349185
-constant double XybLowFreqToVals_lut[21] = {
+constant float XybLowFreqToVals_lut[21] = {
     0,
     1 * XybLowFreqToVals_inc,
     2 * XybLowFreqToVals_inc,
@@ -377,6 +381,7 @@ void XybLowFreqToVals(double x, double y, double z,
     *valx = x * xmul;
     *valy = Interpolate(&XybLowFreqToVals_lut[0], 21, y * ymul);
 }
+
 
 double InterpolateClampNegative(DEVICE const double *array,
                                 int size, double sx) {
@@ -3256,6 +3261,10 @@ kernel void clDiffPrecomputeEx(
     sup1 = fabs(valsh1[2]) + fabs(valsv1[2]);
     m = min(sup0, sup1);
     mask_b[ix] = (float)(m);
+    
+//    mask_x[ix] = 1;
+//    mask_y[ix] = 1;
+//    mask_b[ix] = 1;
 }
 
 kernel void clScaleImageEx(DEVICE float *img[[buffer(0)]], DEVICE const int *sizenum[[buffer(1)]], DEVICE float *scalenum[[buffer(2)]],uint id [[ thread_position_in_grid ]])

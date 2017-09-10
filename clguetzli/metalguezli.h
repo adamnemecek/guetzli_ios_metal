@@ -23,8 +23,8 @@ enum MATH_MODE
     MODE_CUDA=3,
     MODE_CHECKCL=4,
     MODE_CHECKCUDA=5,
-    MODE_METAL=7,
-    MODE_CHECKMETAL=0,
+    MODE_METAL=0,
+    MODE_CHECKMETAL=7,
 };
 
 static MATH_MODE g_mathMode;
@@ -129,10 +129,10 @@ void clScaleImageEx(cl_mem img/*in, out*/, size_t size, double w);
 
 void clAverage5x5Ex(cl_mem img/*in,out*/, const size_t xsize, const size_t ysize);
 
-void clMinSquareValEx(
+cl_mem clMinSquareValEx(
                   cl_mem img/*in,out*/,
                   const size_t xsize, const size_t ysize,
-                  const size_t square_size, const size_t offset);
+                  const size_t square_size, const size_t offset,int unuse);
 
 void clMaskEx(
             ocl_channels  *       mask/*out*/,     ocl_channels  *   mask_dc/*out*/,
