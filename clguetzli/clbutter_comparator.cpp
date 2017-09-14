@@ -4,9 +4,8 @@
 
 #include <algorithm>
 #include <array>
-#import "metalguezli.h"
+#import "metalguetzli.h"
 
-#define  __USE_METAL__
 
 namespace butteraugli {
     
@@ -1277,9 +1276,9 @@ namespace butteraugli
     }
     
     void clButteraugliComparator::DiffmapOpsinDynamicsImage(
-                                                            std::vector<std::vector<float>> &xyb0,
-                                                            std::vector<std::vector<float>> &xyb1,
-                                                            std::vector<float> &result)
+        std::vector<std::vector<float>> &xyb0,
+        std::vector<std::vector<float>> &xyb1,
+        std::vector<float> &result)
     {
         if (MODE_CPU_OPT == g_mathMode)
         {
@@ -1290,7 +1289,7 @@ namespace butteraugli
         if(MODE_METAL == g_mathMode)
         {
             result.resize(xsize_ * ysize_);
-            clDiffmapOpsinDynamicsImage(result.data(), xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+            metalDiffmapOpsinDynamicsImage(result.data(), xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
                                         xyb1[0].data(), xyb1[1].data(), xyb1[2].data(), xsize_, ysize_, step_);
             
         }
@@ -1311,25 +1310,17 @@ namespace butteraugli
                                         xyb1[0].data(), xyb1[1].data(), xyb1[2].data(), xsize_, ysize_, step_);
         }
 #endif
-        //#ifdef __APPLE__
-        //        else if (MODE_METAL == g_mathMode && xsize_ > 100 && ysize_ > 100)
-        //        {
-        //            result.resize(xsize_ * ysize_);
-        //            mtlDiffmapOpsinDynamicsImage(result.data(), xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
-        //                                        xyb1[0].data(), xyb1[1].data(), xyb1[2].data(), xsize_, ysize_, step_);
-        //        }
-        //#endif
         else
         {
             ButteraugliComparator::DiffmapOpsinDynamicsImage(xyb0, xyb1, result);
         }
     }
-    
-    
+
+
     void clButteraugliComparator::BlockDiffMap(const std::vector<std::vector<float> > &xyb0,
-                                               const std::vector<std::vector<float> > &xyb1,
-                                               std::vector<float>* block_diff_dc,
-                                               std::vector<float>* block_diff_ac)
+        const std::vector<std::vector<float> > &xyb1,
+        std::vector<float>* block_diff_dc,
+        std::vector<float>* block_diff_ac)
     {
         ButteraugliComparator::BlockDiffMap(xyb0, xyb1, block_diff_dc, block_diff_ac);
 #ifdef __USE_OPENCL__
@@ -1341,7 +1332,7 @@ namespace butteraugli
                             (*block_diff_dc).data(), (*block_diff_ac).data());
         }
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
         if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
         {
             tclBlockDiffMap(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
@@ -1353,8 +1344,8 @@ namespace butteraugli
     }
     
     void clButteraugliComparator::EdgeDetectorMap(const std::vector<std::vector<float> > &xyb0,
-                                                  const std::vector<std::vector<float> > &xyb1,
-                                                  std::vector<float>* edge_detector_map)
+        const std::vector<std::vector<float> > &xyb1,
+        std::vector<float>* edge_detector_map)
     {
         ButteraugliComparator::EdgeDetectorMap(xyb0, xyb1, edge_detector_map);
 #ifdef __USE_OPENCL__
@@ -1366,7 +1357,7 @@ namespace butteraugli
                                (*edge_detector_map).data());
         }
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
         if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
         {
             tclEdgeDetectorMap(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
@@ -1376,10 +1367,10 @@ namespace butteraugli
         }
 #endif
     }
-    
+
     void clButteraugliComparator::EdgeDetectorLowFreq(const std::vector<std::vector<float> > &xyb0,
-                                                      const std::vector<std::vector<float> > &xyb1,
-                                                      std::vector<float>* block_diff_ac)
+        const std::vector<std::vector<float> > &xyb1,
+        std::vector<float>* block_diff_ac)
     {
 #ifdef __USE_OPENCL__
         if (MODE_CHECKCL == g_mathMode && xsize_ > 8 && ysize_ > 8)
@@ -1387,13 +1378,13 @@ namespace butteraugli
             std::vector<float> orign_ac = *block_diff_ac;
             ButteraugliComparator::EdgeDetectorLowFreq(xyb0, xyb1, block_diff_ac);
             tclEdgeDetectorLowFreq(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
-                                   xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
-                                   xsize_, ysize_, step_,
-                                   orign_ac.data(), (*block_diff_ac).data());
+                xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
+                xsize_, ysize_, step_,
+                orign_ac.data(), (*block_diff_ac).data());
         }
         else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
             {
                 std::vector<float> orign_ac = *block_diff_ac;
@@ -1411,11 +1402,11 @@ namespace butteraugli
     }
     
     void clButteraugliComparator::CombineChannels(const std::vector<std::vector<float> >& mask_xyb,
-                                                  const std::vector<std::vector<float> >& mask_xyb_dc,
-                                                  const std::vector<float>& block_diff_dc,
-                                                  const std::vector<float>& block_diff_ac,
-                                                  const std::vector<float>& edge_detector_map,
-                                                  std::vector<float>* result)
+        const std::vector<std::vector<float> >& mask_xyb_dc,
+        const std::vector<float>& block_diff_dc,
+        const std::vector<float>& block_diff_ac,
+        const std::vector<float>& edge_detector_map,
+        std::vector<float>* result)
     {
 #ifdef __USE_OPENCL__
         if (MODE_CHECKCL == g_mathMode && xsize_ > 8 && ysize_ > 8)
@@ -1430,22 +1421,19 @@ namespace butteraugli
         }
         else
 #endif
-#ifdef __USE_METAL__
-            if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
-            {
-                std::vector<float> temp = *result;
-                temp.resize(res_xsize_ * res_ysize_);
-                ButteraugliComparator::CombineChannels(mask_xyb, mask_xyb_dc, block_diff_dc, block_diff_ac, edge_detector_map, result);
-                tclCombineChannels(mask_xyb[0].data(), mask_xyb[1].data(), mask_xyb[2].data(),
-                                   mask_xyb_dc[0].data(), mask_xyb_dc[1].data(), mask_xyb_dc[2].data(),
-                                   block_diff_dc.data(),
-                                   block_diff_ac.data(), edge_detector_map.data(), xsize_, ysize_, res_xsize_, res_ysize_, step_, &temp[0], &(*result)[0]);
-            }
-            else
+#ifdef __USE_CHECKMETAL__
+        if (MODE_CHECKMETAL == g_mathMode && xsize_ > 8 && ysize_ > 8)
+        {
+            std::vector<float> temp = *result;
+            temp.resize(res_xsize_ * res_ysize_);
+            ButteraugliComparator::CombineChannels(mask_xyb, mask_xyb_dc, block_diff_dc, block_diff_ac, edge_detector_map, result);
+            tclCombineChannels(mask_xyb[0].data(), mask_xyb[1].data(), mask_xyb[2].data(),mask_xyb_dc[0].data(), mask_xyb_dc[1].data(), mask_xyb_dc[2].data(),block_diff_dc.data(),block_diff_ac.data(), edge_detector_map.data(), xsize_, ysize_, res_xsize_, res_ysize_, step_, &temp[0], &(*result)[0]);
+        }
+        else
 #endif
-            {
-                ButteraugliComparator::CombineChannels(mask_xyb, mask_xyb_dc, block_diff_dc, block_diff_ac, edge_detector_map, result);
-            }
+        {
+            ButteraugliComparator::CombineChannels(mask_xyb, mask_xyb_dc, block_diff_dc, block_diff_ac, edge_detector_map, result);
+        }
     }
     
     void clButteraugliComparator::DiffmapOpsinDynamicsImageOpt(
@@ -1631,17 +1619,17 @@ namespace butteraugli
     void MinSquareVal(size_t square_size, size_t offset, size_t xsize, size_t ysize, float *values)
     {
 #ifdef __USE_OPENCL__
-            if (MODE_CHECKCL == g_mathMode && xsize > 8 && ysize > 8)
-            {
-                std::vector<float> img;
-                img.resize(xsize * ysize);
-                memcpy(img.data(), values, xsize * ysize * sizeof(float));
-                _MinSquareVal(square_size, offset, xsize, ysize, values);
-                tclMinSquareVal(img.data(), square_size, offset, xsize, ysize, values);
-            }
-            else
+        if (MODE_CHECKCL == g_mathMode && xsize > 8 && ysize > 8)
+        {
+            std::vector<float> img;
+            img.resize(xsize * ysize);
+            memcpy(img.data(), values, xsize * ysize * sizeof(float));
+            _MinSquareVal(square_size, offset, xsize, ysize, values);
+            tclMinSquareVal(img.data(), square_size, offset, xsize, ysize, values);
+        }
+        else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
             {
                 std::vector<float> img;
@@ -1668,7 +1656,7 @@ namespace butteraugli
         }
         else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
             {
                 std::vector<float> diffs_org = *diffs;
@@ -1692,7 +1680,7 @@ namespace butteraugli
             tclDiffPrecompute(xyb0, xyb1, xsize, ysize, mask);
         }
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
         if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
         {
             tclDiffPrecompute(xyb0, xyb1, xsize, ysize, mask);
@@ -1722,6 +1710,35 @@ namespace butteraugli
                 (*mask)[i].resize(xsize * ysize);
                 (*mask_dc)[i].resize(xsize * ysize);
             }
+            metalMask((*mask)[0].data(), (*mask)[1].data(), (*mask)[2].data(),
+                   (*mask_dc)[0].data(), (*mask_dc)[1].data(), (*mask_dc)[2].data(),
+                   xsize, ysize,
+                   xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+                   xyb1[0].data(), xyb1[1].data(), xyb1[2].data()
+                   );
+        }
+#ifdef __USE_CHECKMETAL__
+        else if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+        {
+            _Mask(xyb0, xyb1, xsize, ysize, mask, mask_dc);
+            tclMask(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
+                    xyb1[0].data(), xyb1[1].data(), xyb1[2].data(),
+                    xsize, ysize,
+                    (*mask)[0].data(), (*mask)[1].data(), (*mask)[2].data(),
+                    (*mask_dc)[0].data(), (*mask_dc)[1].data(), (*mask_dc)[2].data());
+        }
+#endif
+#endif
+#ifdef __USE_OPENCL__
+        else if (MODE_OPENCL == g_mathMode && xsize > 100 && ysize > 100)
+        {
+            mask->resize(3);
+            mask_dc->resize(3);
+            for (int i = 0; i < 3; i++)
+            {
+                (*mask)[i].resize(xsize * ysize);
+                (*mask_dc)[i].resize(xsize * ysize);
+            }
             clMask((*mask)[0].data(), (*mask)[1].data(), (*mask)[2].data(),
                    (*mask_dc)[0].data(), (*mask_dc)[1].data(), (*mask_dc)[2].data(),
                    xsize, ysize,
@@ -1729,7 +1746,7 @@ namespace butteraugli
                    xyb1[0].data(), xyb1[1].data(), xyb1[2].data()
                    );
         }
-        else if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
+        else if (MODE_CHECKCL == g_mathMode && xsize > 8 && ysize > 8)
         {
             _Mask(xyb0, xyb1, xsize, ysize, mask, mask_dc);
             tclMask(xyb0[0].data(), xyb0[1].data(), xyb0[2].data(),
@@ -1776,7 +1793,7 @@ namespace butteraugli
         }
         else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
             {
                 std::vector<float> diffmap_org = *diffmap;
@@ -1809,7 +1826,7 @@ namespace butteraugli
         }
         else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
             {
                 _MaskHighIntensityChange(xsize, ysize, c0, c1, xyb0, xyb1);
@@ -1842,7 +1859,7 @@ namespace butteraugli
         }
         else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && result->size() > 64)
             {
                 std::vector<float> result_org = *result;
@@ -1872,7 +1889,7 @@ namespace butteraugli
             tclConvolution(xsize, ysize, xstep, len, offset, multipliers, inp, border_ratio, result);
         }
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
         if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
         {
             tclConvolution(xsize, ysize, xstep, len, offset, multipliers, inp, border_ratio, result);
@@ -1894,7 +1911,7 @@ namespace butteraugli
         }
         else
 #endif
-#ifdef __USE_METAL__
+#ifdef __USE_CHECKMETAL__
             if (MODE_CHECKMETAL == g_mathMode && xsize > 8 && ysize > 8)
             {
                 std::vector<float> orignChannel;
@@ -1924,16 +1941,18 @@ namespace butteraugli
             float * g = rgb[1].data();
             float * b = rgb[2].data();
             
-            clOpsinDynamicsImage(r, g, b, xsize, ysize);
+            metalOpsinDynamicsImage(r, g, b, xsize, ysize);
         }
-        //		else if (MODE_CHECKCL == g_mathMode && xsize > 8 & ysize > 8)
-        //		{
-        //			std::vector< std::vector<float>> orig_rgb = rgb;
-        //			_OpsinDynamicsImage(xsize, ysize, rgb);
-        //			tclOpsinDynamicsImage(orig_rgb[0].data(), orig_rgb[1].data(), orig_rgb[2].data(),
-        //				xsize, ysize,
-        //				rgb[0].data(), rgb[1].data(), rgb[2].data());
-        //	}
+#ifdef __USE_CHECKMETAL__
+        else if (MODE_CHECKMETAL == g_mathMode && xsize > 8 & ysize > 8)
+        {
+            std::vector< std::vector<float>> orig_rgb = rgb;
+            _OpsinDynamicsImage(xsize, ysize, rgb);
+            tclOpsinDynamicsImage(orig_rgb[0].data(), orig_rgb[1].data(), orig_rgb[2].data(),
+                                  xsize, ysize,
+                                  rgb[0].data(), rgb[1].data(), rgb[2].data());
+        }
+#endif
 #endif
 #ifdef __USE_CUDA__
         else if (MODE_CUDA == g_mathMode && xsize > 100 && ysize > 100)

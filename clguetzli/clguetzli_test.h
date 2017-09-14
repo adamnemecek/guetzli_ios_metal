@@ -1,7 +1,5 @@
 #pragma once
-//#ifdef __USE_OPENCL__
 #ifdef __USE_METAL__
-//#include "ocl.h"
 #import "ometal.h"
 
 void tclMaskHighIntensityChange(const float* r, const float* g, const float* b,

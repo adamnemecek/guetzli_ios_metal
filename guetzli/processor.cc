@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#ifdef __USE_METAL__
+#import "metalguetzli.h"
+#endif
 #include "guetzli/processor.h"
 
 #include <algorithm>
@@ -36,11 +38,6 @@
 #ifdef __APPLE__
 #include "clguetzli/utils.h"
 #endif
-
-#import "ometal.h"
-
-#define __USE_METAL__
-//#define __USE_OPENCL__
 
 namespace guetzli {
     
@@ -583,6 +580,42 @@ namespace guetzli {
         
         if (MODE_OPENCL == g_mathMode || MODE_CUDA == g_mathMode||MODE_METAL == g_mathMode)
         {
+#ifdef __USE_OPENCL__
+            ButteraugliComparatorEx * comp = (ButteraugliComparatorEx*)comparator_;
+            
+            channel_info orig_channel[3];
+            channel_info mayout_channel[3];
+            
+            for (int c = 0; c < 3; c++)
+            {
+                mayout_channel[c].factor = img->component(c).factor_x();
+                mayout_channel[c].block_width = img->component(c).width_in_blocks();
+                mayout_channel[c].block_height = img->component(c).height_in_blocks();
+                mayout_channel[c].coeff = img->component(c).coeffs();
+                mayout_channel[c].pixel = img->component(c).pixels();
+                
+                orig_channel[c].factor = jpg.components[c].v_samp_factor;
+                orig_channel[c].block_width = jpg.components[c].width_in_blocks;
+                orig_channel[c].block_height = jpg.components[c].height_in_blocks;
+                orig_channel[c].coeff = jpg.components[c].coeffs.data();
+            }
+            output_order_gpu.resize(num_blocks * kBlockSize);
+            output_order = output_order_gpu.data();
+            
+            if (MODE_OPENCL == g_mathMode)
+            {
+                clComputeBlockZeroingOrder(output_order,
+                                           orig_channel,
+                                           comp->imgOpsinDynamicsBlockList.data(),
+                                           comp->imgMaskXyzScaleBlockList.data(),
+                                           width,
+                                           height,
+                                           mayout_channel,
+                                           factor_x,
+                                           comp_mask,
+                                           comp->BlockErrorLimit());
+            }
+#endif
 #ifdef __USE_METAL__
             ButteraugliComparatorEx * comp = (ButteraugliComparatorEx*)comparator_;
             
@@ -605,18 +638,18 @@ namespace guetzli {
             output_order_gpu.resize(num_blocks * kBlockSize);
             output_order = output_order_gpu.data();
             
-            if (MODE_METAL == g_mathMode)
+            if (MODE_OPENCL == g_mathMode)
             {
-                clComputeBlockZeroingOrder(output_order,
-                                           orig_channel,
-                                           comp->imgOpsinDynamicsBlockList.data(),
-                                           comp->imgMaskXyzScaleBlockList.data(),
-                                           width,
-                                           height,
-                                           mayout_channel,
-                                           factor_x,
-                                           comp_mask,
-                                           comp->BlockErrorLimit());
+                metalComputeBlockZeroingOrder(output_order,
+                                              orig_channel,
+                                              comp->imgOpsinDynamicsBlockList.data(),
+                                              comp->imgMaskXyzScaleBlockList.data(),
+                                              width,
+                                              height,
+                                              mayout_channel,
+                                              factor_x,
+                                              comp_mask,
+                                              comp->BlockErrorLimit());
             }
 #endif
 #ifdef __USE_CUDA__
@@ -638,44 +671,47 @@ namespace guetzli {
 #ifdef __USE_OPENCL__
         if (MODE_CPU_OPT == g_mathMode || MODE_CPU == g_mathMode || MODE_CHECKCL == g_mathMode)
 #else
-            if (MODE_CPU_OPT == g_mathMode || MODE_CPU == g_mathMode)
+#ifdef __USE_OPENCL__
+            if (MODE_CPU_OPT == g_mathMode || MODE_CPU == g_mathMode || MODE_CHECKMETAL == g_mathMode)
+#else
+                if (MODE_CPU_OPT == g_mathMode || MODE_CPU == g_mathMode)
 #endif
-            {
-                //NSLog(@"g_mathMode:d%",g_mathMode);
-                output_order_cpu.resize(num_blocks * kBlockSize);
-                output_order = output_order_cpu.data();
-                for (int block_y = 0, block_ix = 0; block_y < block_height; ++block_y) {
-                    for (int block_x = 0; block_x < block_width; ++block_x, ++block_ix) {
-                        coeff_t block[kBlockSize] = { 0 };
-                        coeff_t orig_block[kBlockSize] = { 0 };
-                        for (int c = 0; c < 3; ++c) {
-                            if (comp_mask & (1 << c)) {
-                                assert(img->component(c).factor_x() == factor_x);
-                                assert(img->component(c).factor_y() == factor_y);
-                                img->component(c).GetCoeffBlock(block_x, block_y,
-                                                                &block[c * kDCTBlockSize]);
-                                const JPEGComponent& comp = jpg.components[c];
-                                int jpg_block_ix = block_y * comp.width_in_blocks + block_x;
-                                memcpy(&orig_block[c * kDCTBlockSize],
-                                       &comp.coeffs[jpg_block_ix * kDCTBlockSize],
-                                       kDCTBlockSize * sizeof(orig_block[0]));
+#endif
+                {
+                    output_order_cpu.resize(num_blocks * kBlockSize);
+                    output_order = output_order_cpu.data();
+                    for (int block_y = 0, block_ix = 0; block_y < block_height; ++block_y) {
+                        for (int block_x = 0; block_x < block_width; ++block_x, ++block_ix) {
+                            coeff_t block[kBlockSize] = { 0 };
+                            coeff_t orig_block[kBlockSize] = { 0 };
+                            for (int c = 0; c < 3; ++c) {
+                                if (comp_mask & (1 << c)) {
+                                    assert(img->component(c).factor_x() == factor_x);
+                                    assert(img->component(c).factor_y() == factor_y);
+                                    img->component(c).GetCoeffBlock(block_x, block_y,
+                                                                    &block[c * kDCTBlockSize]);
+                                    const JPEGComponent& comp = jpg.components[c];
+                                    int jpg_block_ix = block_y * comp.width_in_blocks + block_x;
+                                    memcpy(&orig_block[c * kDCTBlockSize],
+                                           &comp.coeffs[jpg_block_ix * kDCTBlockSize],
+                                           kDCTBlockSize * sizeof(orig_block[0]));
+                                }
                             }
-                        }
-                        
-                        std::vector<CoeffData> block_order;
-                        ComputeBlockZeroingOrder(block, orig_block, block_x, block_y, factor_x, factor_y, comp_mask, img, &block_order);
-                        
-                        CoeffData * p = &output_order_cpu[block_ix * kBlockSize];
-                        for (int i = 0; i < block_order.size(); i++)
-                        {
-                            p[i].idx = block_order[i].idx;
-                            p[i].block_err = block_order[i].block_err;
+                            
+                            std::vector<CoeffData> block_order;
+                            ComputeBlockZeroingOrder(block, orig_block, block_x, block_y, factor_x, factor_y, comp_mask, img, &block_order);
+                            
+                            CoeffData * p = &output_order_cpu[block_ix * kBlockSize];
+                            for (int i = 0; i < block_order.size(); i++)
+                            {
+                                p[i].idx = block_order[i].idx;
+                                p[i].block_err = block_order[i].block_err;
+                            }
                         }
                     }
                 }
-            }
         
-        if (MODE_CHECKCL == g_mathMode)
+        if (MODE_CHECKCL == g_mathMode||MODE_CHECKMETAL == g_mathMode)
         {
             int count = 0;
             int check_size = output_order_gpu.size();
@@ -1055,7 +1091,11 @@ namespace guetzli {
         }
         std::unique_ptr<ButteraugliComparator> comparator;
         if (jpg.width >= 32 && jpg.height >= 32) {
-#define __USE_METAL__
+#ifdef __USE_OPENCL__
+            comparator.reset(
+                             new ButteraugliComparatorEx(jpg.width, jpg.height, &rgb,
+                                                         params.butteraugli_target, stats));
+#else
 #ifdef __USE_METAL__
             comparator.reset(
                              new ButteraugliComparatorEx(jpg.width, jpg.height, &rgb,
@@ -1064,6 +1104,7 @@ namespace guetzli {
             comparator.reset(
                              new ButteraugliComparator(jpg.width, jpg.height, &rgb,
                                                        params.butteraugli_target, stats));
+#endif
 #endif
         }
         bool ok = ProcessJpegData(params, jpg, comparator.get(), &out, stats);
@@ -1086,7 +1127,15 @@ namespace guetzli {
         }
         std::unique_ptr<ButteraugliComparator> comparator;
         if (jpg.width >= 32 && jpg.height >= 32) {
-#ifdef __USE_METAL__
+#ifdef  __USE_OPENCL__
+            
+            comparator.reset(
+                             new ButteraugliComparatorEx(jpg.width, jpg.height, &rgb,
+                                                         params.butteraugli_target, stats));
+#else
+            
+#ifdef  __USE_METAL__
+            
             comparator.reset(
                              new ButteraugliComparatorEx(jpg.width, jpg.height, &rgb,
                                                          params.butteraugli_target, stats));
@@ -1095,6 +1144,7 @@ namespace guetzli {
                              new ButteraugliComparator(jpg.width, jpg.height, &rgb,
                                                        params.butteraugli_target, stats));
 #endif
+#endif
         }
         bool ok = ProcessJpegData(params, jpg, comparator.get(), &out, stats);
         *jpg_out = out.jpeg_data;
@@ -1102,3 +1152,4 @@ namespace guetzli {
     }
     
 }  // namespace guetzli
+

@@ -5,7 +5,7 @@
 //  Created by 张聪 on 2017/8/11.
 //  Copyright © 2017年 张聪. All rights reserved.
 //
-
+#import "clguetzli.cl"
 #include <metal_stdlib>
 using namespace metal;
 
@@ -18,10 +18,10 @@ using namespace metal;
  *
  */
 
-#ifdef __USE_METAL__
+
 #define double float
-#endif
-#define double float
+
+
 
 #define DEVICE device
 #define THREAD thread
@@ -79,7 +79,45 @@ typedef struct __Complex
     double imag;
 }Complex;
 
-
+constant double csf8x8[kBlockHalf + kBlockEdgeHalf + 1] = {
+    5.28270670524,
+    0.0,
+    0.0,
+    0.0,
+    0.3831134973,
+    0.676303603859,
+    3.58927792424,
+    18.6104367002,
+    18.6104367002,
+    3.09093131948,
+    1.0,
+    0.498250875965,
+    0.36198671102,
+    0.308982169883,
+    0.1312701920435,
+    2.37370549629,
+    3.58927792424,
+    1.0,
+    2.37370549629,
+    0.991205724152,
+    1.05178802919,
+    0.627264168628,
+    0.4,
+    0.1312701920435,
+    0.676303603859,
+    0.498250875965,
+    0.991205724152,
+    0.5,
+    0.3831134973,
+    0.349686450518,
+    0.627264168628,
+    0.308982169883,
+    0.3831134973,
+    0.36198671102,
+    1.05178802919,
+    0.3831134973,
+    0.12,
+};
 void   XybToVals(double x, double y, double z, THREAD double *valx, THREAD double *valy, THREAD double *valz);
 double InterpolateClampNegative(DEVICE const double *array, int size, double sx);
 void   XybDiffLowFreqSquaredAccumulate(double r0, double g0, double b0,
@@ -90,7 +128,7 @@ void   OpsinAbsorbance(const double in[3], double out[3]);
 void   RgbToXyb(double r, double g, double b, THREAD double *valx, THREAD double *valy, THREAD double *valz);
 double Gamma(double v);
 void   ButteraugliBlockDiff(thread double xyb0[3 * kBlockSize],
-                            //                                       thread double xyb1[3 * kBlockSize],
+                            thread double xyb1[3 * kBlockSize],
                             double diff_xyb_dc[3],
                             double diff_xyb_ac[3],
                             double diff_xyb_edge_dc[3]);
@@ -145,11 +183,6 @@ double Interpolate(constant const double *array, const int size, const double sx
 void TransposeBlock(Complex data[kBlockSize]) ;
 void FFT8(thread Complex* a);
 double RemoveRangeAroundZero(double v, double range);
-void ButteraugliBlockDiff(thread double xyb0[3 * kBlockSize],
-                          thread double xyb1[3 * kBlockSize],
-                          double diff_xyb_dc[3],
-                          double diff_xyb_ac[3],
-                          double diff_xyb_edge_dc[3]);
 double abssq(const Complex c);
 void ButteraugliFFTSquared(thread double block[kBlockSize]);
 double EvaluatePolynomial(const double x, constant const double *coefficients, int n);
@@ -705,45 +738,7 @@ constant double MakeHighFreqColorDiffDy_lut[21] = {
     MakeHighFreqColorDiffDy_off + 19 * MakeHighFreqColorDiffDy_inc,
 };
 
-constant double csf8x8[kBlockHalf + kBlockEdgeHalf + 1] = {
-    5.28270670524,
-    0.0,
-    0.0,
-    0.0,
-    0.3831134973,
-    0.676303603859,
-    3.58927792424,
-    18.6104367002,
-    18.6104367002,
-    3.09093131948,
-    1.0,
-    0.498250875965,
-    0.36198671102,
-    0.308982169883,
-    0.1312701920435,
-    2.37370549629,
-    3.58927792424,
-    1.0,
-    2.37370549629,
-    0.991205724152,
-    1.05178802919,
-    0.627264168628,
-    0.4,
-    0.1312701920435,
-    0.676303603859,
-    0.498250875965,
-    0.991205724152,
-    0.5,
-    0.3831134973,
-    0.349686450518,
-    0.627264168628,
-    0.308982169883,
-    0.3831134973,
-    0.36198671102,
-    1.05178802919,
-    0.3831134973,
-    0.12,
-};
+
 
 // Computes 8x8 FFT of each channel of xyb0 and xyb1 and adds the total squared
 // 3-dimensional xybdiff of the two blocks to diff_xyb_{dc,ac} and the average
@@ -3080,8 +3075,8 @@ kernel void clBlockDiffMapEx(
     size_t res_ix = res_y * res_xsize + res_x;
     size_t offset = min(pos_y, ysize - 8) * xsize + min(pos_x, xsize - 8);
     
-    double block0[3 * kBlockEdge * kBlockEdge];
-    double block1[3 * kBlockEdge * kBlockEdge];
+    double block0[3 * kBlockEdge * kBlockEdge]={0};
+    double block1[3 * kBlockEdge * kBlockEdge]={0};
     
     thread double *block0_r = &block0[0];
     thread double *block0_g = &block0[kBlockEdge * kBlockEdge];
@@ -3257,9 +3252,6 @@ kernel void clDiffPrecomputeEx(
     m = min(sup0, sup1);
     mask_b[ix] = (float)(m);
     
-//    mask_x[ix] = 1;
-//    mask_y[ix] = 1;
-//    mask_b[ix] = 1;
 }
 
 kernel void clScaleImageEx(DEVICE float *img[[buffer(0)]], DEVICE const int *sizenum[[buffer(1)]], DEVICE float *scalenum[[buffer(2)]],uint id [[ thread_position_in_grid ]])
@@ -3428,7 +3420,7 @@ kernel void clCombineChannelsEx(
                              DotProduct(&edge_detector_map[3 * res_ix], mask));
 }
 
-kernel void clUpsampleSquareRootEx(DEVICE float *diffmap_out[[buffer(0)]], DEVICE const float *diffmap[[buffer(1)]], DEVICE int *xsizenum[[buffer(2)]], DEVICE int *ysizenum[[buffer(3)]], DEVICE int *stepnum[[buffer(4)]],uint2 id [[ thread_position_in_grid ]],uint2 id1 [[threads_per_grid]])
+kernel void clUpsampleSquareRootEx(DEVICE float *diffmap_out[[buffer(0)]], DEVICE const float *diffmap[[buffer(1)]], DEVICE int *xsizenum[[buffer(2)]], DEVICE int *ysizenum[[buffer(3)]], DEVICE int *stepnum[[buffer(4)]],uint2 id [[ thread_position_in_grid ]])
 {
     int xsize = *xsizenum;
     int ysize = *ysizenum;
@@ -3437,8 +3429,8 @@ kernel void clUpsampleSquareRootEx(DEVICE float *diffmap_out[[buffer(0)]], DEVIC
     const int res_x = id.x;
     const int res_y = id.y;
     
-    const int res_xsize = id1.x;
-    const int res_ysize = id1.y;
+    const int res_xsize = id.x;
+    const int res_ysize = id.y;
     
     const int pos_x = res_x * step;
     const int pos_y = res_y * step;
@@ -3553,7 +3545,6 @@ kernel void clComputeBlockZeroingOrderEx(
     orig_channel[2].coeff = orig_batch_2;
     
     channel_info mayout_channel[3] ;
-//    = { mayout_channel_0, mayout_channel_1, mayout_channel_2 };
     mayout_channel[0].block_width= mayout_channel_0.block_width;
     mayout_channel[1].block_width = mayout_channel_1.block_width;
     mayout_channel[2].block_width = mayout_channel_2.block_width;
@@ -3616,7 +3607,7 @@ kernel void clComputeBlockZeroingOrderEx(
 //                                               image_width,
 //                                               image_height,
 //                                               factor);
-            float max_err = 10000;
+            float max_err  = 10000;
             if (max_err < best_err)
             {
                 best_err = max_err;
@@ -3658,34 +3649,6 @@ kernel void clComputeBlockZeroingOrderEx(
 }
 
 
-////test
-//
-//int add( int a, int b);
-//int xxxxx(thread int *a,thread  int *b);
-////
-//
-//
-//kernel void kernel_function(const device float *inA[[buffer(0) ]],
-//                            const device float *inB [[ buffer(1) ]],
-//                            device  float *out [[ buffer(2) ]],
-//                            
-//                            uint2 id [[ thread_position_in_grid ]])
-//{
-//    
-//    out[id.x+id.y*2] = add(inA[id.x+id.y*2] , inB[id.x+id.y*2]);
-//    
-//    
-//}
-//
-//
-//int add(int a,int b){
-//    return xxxxx(&a,&b);
-//}
-//
-//int xxxxx(thread int *a,thread int *b){
-//    return *a+*b;
-//}
-////testend
 
 
 #ifdef __USE_DOUBLE_AS_FLOAT__
